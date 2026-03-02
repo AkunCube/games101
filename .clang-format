@@ -1,0 +1,5 @@
+BasedOnStyle:  LLVM
+IndentWidth: 2
+SortIncludes: true
+ColumnLimit: 80
+IndentCaseLabels: true

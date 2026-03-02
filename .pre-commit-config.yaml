@@ -1,0 +1,16 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+    -   id: trailing-whitespace
+    -   id: check-added-large-files
+        args: ['--maxkb=2048']
+    -   id: check-merge-conflict
+    -   id: end-of-file-fixer
+
+-   repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v16.0.0
+    hooks:
+      - id: clang-format
+        name: Format code with clang-format
+        files: \.(cpp|h|c|cc|cxx|m|mm)$
