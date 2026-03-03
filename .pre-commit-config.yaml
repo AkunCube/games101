@@ -13,4 +13,4 @@ repos:
     hooks:
       - id: clang-format
         name: Format code with clang-format
-        files: \.(cpp|h|c|cc|cxx|m|mm)$
+        files: \.(cpp|h|hpp|c|cc|cxx|m|mm)$
