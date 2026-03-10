@@ -40,10 +40,10 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
 }
 
 
-static bool insideTriangle(int x, int y, const Vector3f* _v)
+static bool insideTriangle(float x, float y, const Vector3f* _v)
 {
     // TODO : Implement this function to check if the point (x, y) is inside the triangle represented by _v[0], _v[1], _v[2]
-    Vector3f p(x + 0.5, y + 0.5, 1.0f);
+    Vector3f p(x, y, 1.0f);
     Vector3f v0 = _v[1] - _v[0];
     Vector3f v1 = _v[2] - _v[1];
     Vector3f v2 = _v[0] - _v[2];
@@ -123,20 +123,33 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     int y_min = std::max(0, static_cast<int>(std::min(std::min(v[0].y(), v[1].y()), v[2].y())));
     int y_max = std::min(height - 1, static_cast<int>(std::max(std::max(v[0].y(), v[1].y()), v[2].y())));
 
+    static const std::vector<std::pair<float, float>> offset = {{0.25, 0.25}, {0.25, 0.75}, {0.75, 0.25}, {0.75, 0.75}};
+
     // iterate through the pixel and find if the current pixel is inside the triangle
     for (int x = x_min; x <= x_max; ++x) {
         for (int y = y_min; y <= y_max; ++y) {
-            if (insideTriangle(x, y, t.v)) {
-                auto [alpha, beta, gamma] = computeBarycentric2D(x + 0.5, y + 0.5, t.v);
-                float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-                float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-                z_interpolated *= w_reciprocal;
-                int buf_index = get_index(x, y);
-                if (z_interpolated < depth_buf[buf_index]) {
-                    depth_buf[buf_index] = z_interpolated;
-                    set_pixel(Eigen::Vector3f(x, y, 1), t.getColor());
+            int cnt = 0;
+            for (int i = 0; i < 4; ++i) {
+                float pos_x = x + offset[i].first;
+                float pos_y = y + offset[i].second;
+                if (insideTriangle(pos_x, pos_y, t.v)) {
+                    auto [alpha, beta, gamma] = computeBarycentric2D(pos_x, pos_y, t.v);
+                    float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                    float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+                    z_interpolated *= w_reciprocal;
+                    int buf_index = get_index(x, y) * 4 + i;
+                    if (z_interpolated < depth_buf[buf_index]) {
+                        depth_buf[buf_index] = z_interpolated;
+                        ++cnt;
+                    }
                 }
             }
+            if (cnt == 0) {
+                // No sub-pixel is inside the triangle.
+                continue;
+            }
+            Vector3f curr_color = frame_buf[get_index(x, y)];
+            set_pixel(Eigen::Vector3f(x, y, 1), t.getColor() * static_cast<float>(cnt) / 4.0f + curr_color * (1.0f - static_cast<float>(cnt) / 4.0f));
         }
     }
 
@@ -179,7 +192,7 @@ void rst::rasterizer::clear(rst::Buffers buff)
 rst::rasterizer::rasterizer(int w, int h) : width(w), height(h)
 {
     frame_buf.resize(w * h);
-    depth_buf.resize(w * h);
+    depth_buf.resize(w * h * 4);
 }
 
 int rst::rasterizer::get_index(int x, int y)
