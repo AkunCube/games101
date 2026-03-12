@@ -285,6 +285,7 @@ void rst::rasterizer::rasterize_triangle(
       fragment_shader_payload payload(interpolated_color, interpolated_normal,
                                       interpolated_texcoords,
                                       texture ? &*texture : nullptr);
+      payload.view_pos = interpolated_shadingcoords;
       Eigen::Vector3f pixel_color = fragment_shader(payload);
       set_pixel(Eigen::Vector2i(x, y), pixel_color);
     }
