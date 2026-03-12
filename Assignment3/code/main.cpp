@@ -82,13 +82,13 @@ struct light {
 
 Eigen::Vector3f
 texture_fragment_shader(const fragment_shader_payload &payload) {
-  Eigen::Vector3f return_color = {0, 0, 0};
+  Eigen::Vector3f texture_color;
   if (payload.texture) {
     // TODO: Get the texture value at the texture coordinates of the current
     // fragment
+    texture_color = payload.texture->getColor(payload.tex_coords.x(),
+                                              payload.tex_coords.y());
   }
-  Eigen::Vector3f texture_color;
-  texture_color << return_color.x(), return_color.y(), return_color.z();
 
   Eigen::Vector3f ka = Eigen::Vector3f(0.005, 0.005, 0.005);
   Eigen::Vector3f kd = texture_color / 255.f;
@@ -113,6 +113,22 @@ texture_fragment_shader(const fragment_shader_payload &payload) {
     // TODO: For each light source in the code, calculate what the *ambient*,
     // *diffuse*, and *specular* components are. Then, accumulate that result on
     // the *result_color* object.
+    // Ambient.
+    result_color += ka.cwiseProduct(amb_light_intensity);
+
+    // Diffuse.
+    Eigen::Vector3f light_dir = (light.position - point);
+    float r_square = light_dir.squaredNorm();
+    light_dir.normalize();
+
+    Eigen::Vector3f light_energy = light.intensity / r_square;
+    result_color +=
+        kd.cwiseProduct(light_energy) * std::max(0.f, normal.dot(light_dir));
+
+    // Specular.
+    Eigen::Vector3f eye_dir = (eye_pos - point).normalized();
+    float cosine = std::max(0.0f, eye_dir.dot(reflect(light_dir, normal)));
+    result_color += ks.cwiseProduct(light_energy) * std::pow(cosine, p);
   }
 
   return result_color * 255.f;
@@ -147,12 +163,12 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload &payload) {
 
     // Diffuse.
     Eigen::Vector3f light_dir = (light.position - point);
-    float r = light_dir.norm();
+    float r_square = light_dir.squaredNorm();
     light_dir.normalize();
 
-    Eigen::Vector3f light_energy = light.intensity / r / r;
+    Eigen::Vector3f light_energy = light.intensity / r_square;
     result_color +=
-        kd.cwiseProduct(light_energy) * std::max(0.f, normal.dot(light_dir));
+        kd.cwiseProduct(light_energy) * std::max(0.0f, normal.dot(light_dir));
 
     // Specular.
     Eigen::Vector3f eye_dir = (eye_pos - point).normalized();
