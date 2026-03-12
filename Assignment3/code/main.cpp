@@ -38,6 +38,21 @@ Eigen::Matrix4f get_model_matrix(float angle) {
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
                                       float zNear, float zFar) {
   // TODO: Use the same projection matrix from the previous assignments
+  Eigen::Matrix4f translate;
+  Eigen::Matrix4f scale;
+  Eigen::Matrix4f persp_to_ortho;
+  float t = tan(eye_fov * MY_PI / 180.0 / 2) * zNear;
+  float r = t * aspect_ratio;
+  persp_to_ortho << -zNear, 0, 0, 0, 0, -zNear, 0, 0, 0, 0, -(zNear + zFar),
+      -zNear * zFar, 0, 0, 1, 0;
+  translate << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, (zNear + zFar) / 2.0, 0, 0, 0,
+      1;
+  // IMPORTANT: zNear and zFar are both positive, the z size is `zFar - zNear`,
+  // but in order to calculate the z buffer, we reverse the z axis, so the z
+  // size is `zNear - zFar`.
+  scale << 1 / r, 0, 0, 0, 0, 1 / t, 0, 0, 0, 0, 2 / (zNear - zFar), 0, 0, 0, 0,
+      1;
+  return scale * translate * persp_to_ortho;
 }
 
 Eigen::Vector3f vertex_shader(const vertex_shader_payload &payload) {
