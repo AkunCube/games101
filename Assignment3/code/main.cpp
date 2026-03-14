@@ -241,6 +241,7 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload &payload) {
   Eigen::Vector3f color = payload.color;
   Eigen::Vector3f point = payload.view_pos;
   Eigen::Vector3f normal = payload.normal;
+  Texture *texture = payload.texture;
 
   float kh = 0.2, kn = 0.1;
 
@@ -253,10 +254,31 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload &payload) {
   // dV = kh * kn * (h(u,v+1/h)-h(u,v))
   // Vector ln = (-dU, -dV, 1)
   // Normal n = normalize(TBN * ln)
+  Eigen::Vector3f n = normal.normalized();
+  float x = n.x();
+  float y = n.y();
+  float z = n.z();
+  float square_root = sqrt(x * x + z * z);
 
-  Eigen::Vector3f result_color = {0, 0, 0};
-  result_color = normal;
+  // t is normalized already.
+  Eigen::Vector3f t(x * y / square_root, square_root, z * y / square_root);
+  Eigen::Vector3f b = n.cross(t);
+  Eigen::Matrix3f TBN;
+  TBN << t.x(), b.x(), n.x(), t.y(), b.y(), n.y(), t.z(), b.z(), n.z();
 
+  float u = payload.tex_coords.x();
+  float v = payload.tex_coords.y();
+  float w = texture->width;
+  float h = texture->height;
+
+  float dU = kh * kn *
+             (texture->getColor(u + 1.0f / w, v).norm() -
+              texture->getColor(u, v).norm());
+  float dV = kh * kn *
+             (texture->getColor(u, v + 1.0f / h).norm() -
+              texture->getColor(u, v).norm());
+  Eigen::Vector3f ln(-dU, -dV, 1.0f);
+  Eigen::Vector3f result_color = (TBN * ln).normalized();
   return result_color * 255.f;
 }
 
