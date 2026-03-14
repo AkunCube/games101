@@ -211,6 +211,32 @@ displacement_fragment_shader(const fragment_shader_payload &payload) {
   // Vector ln = (-dU, -dV, 1)
   // Position p = p + kn * n * h(u,v)
   // Normal n = normalize(TBN * ln)
+  Texture *texture = payload.texture;
+  Eigen::Vector3f n = normal.normalized();
+  float x = n.x();
+  float y = n.y();
+  float z = n.z();
+  float square_root = sqrt(x * x + z * z);
+
+  // t is normalized already.
+  Eigen::Vector3f t(x * y / square_root, square_root, z * y / square_root);
+  Eigen::Vector3f b = n.cross(t);
+  Eigen::Matrix3f TBN;
+  TBN << t.x(), b.x(), n.x(), t.y(), b.y(), n.y(), t.z(), b.z(), n.z();
+
+  float u = payload.tex_coords.x();
+  float v = payload.tex_coords.y();
+  float w = texture->width;
+  float h = texture->height;
+
+  float texture_color_norm = texture->getColor(u, v).norm();
+  float dU = kh * kn *
+             (texture->getColor(u + 1.0f / w, v).norm() - texture_color_norm);
+  float dV = kh * kn *
+             (texture->getColor(u, v + 1.0f / h).norm() - texture_color_norm);
+  Eigen::Vector3f ln(-dU, -dV, 1.0f);
+  point += kn * n * texture_color_norm;
+  normal = (TBN * ln).normalized();
 
   Eigen::Vector3f result_color = {0, 0, 0};
 
@@ -218,6 +244,23 @@ displacement_fragment_shader(const fragment_shader_payload &payload) {
     // TODO: For each light source in the code, calculate what the *ambient*,
     // *diffuse*, and *specular* components are. Then, accumulate that result on
     // the *result_color* object.
+
+    // Ambient.
+    result_color += ka.cwiseProduct(amb_light_intensity);
+
+    // Diffuse.
+    Eigen::Vector3f light_dir = (light.position - point);
+    float r_square = light_dir.squaredNorm();
+    light_dir.normalize();
+
+    Eigen::Vector3f light_energy = light.intensity / r_square;
+    result_color +=
+        kd.cwiseProduct(light_energy) * std::max(0.0f, normal.dot(light_dir));
+
+    // Specular.
+    Eigen::Vector3f eye_dir = (eye_pos - point).normalized();
+    float cosine = std::max(0.f, eye_dir.dot(reflect(light_dir, normal)));
+    result_color += ks.cwiseProduct(light_energy) * std::pow(cosine, p);
   }
 
   return result_color * 255.f;
