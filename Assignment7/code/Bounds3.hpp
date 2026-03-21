@@ -6,6 +6,7 @@
 #define RAYTRACING_BOUNDS3_H
 #include "Ray.hpp"
 #include "Vector.hpp"
+#include "global.hpp"
 #include <array>
 #include <limits>
 
@@ -84,6 +85,19 @@ inline bool Bounds3::IntersectP(const Ray &ray, const Vector3f &invDir,
   // Multiply is faster that Division dirIsNeg: ray direction(x,y,z),
   // dirIsNeg=[int(x>0),int(y>0),int(z>0)], use this to simplify your logic
   // TODO test if ray bound intersects
+  float tMin = -kInfinity;
+  float tMax = kInfinity;
+  for (int i = 0; i < 3; ++i) {
+    float tmpMin = (pMin[i] - ray.origin[i]) * invDir[i];
+    float tmpMax = (pMax[i] - ray.origin[i]) * invDir[i];
+    if (!dirIsNeg[i]) {
+      std::swap(tmpMin, tmpMax);
+    }
+    tMin = std::max(tMin, tmpMin);
+    tMax = std::min(tMax, tmpMax);
+  }
+
+  return tMin <= tMax && tMax >= 0.0f;
 }
 
 inline Bounds3 Union(const Bounds3 &b1, const Bounds3 &b2) {

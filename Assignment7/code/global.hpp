@@ -31,9 +31,9 @@ inline bool solveQuadratic(const float &a, const float &b, const float &c,
 }
 
 inline float get_random_float() {
-  std::random_device dev;
-  std::mt19937 rng(dev());
-  std::uniform_real_distribution<float> dist(
+  static std::random_device dev;
+  static std::mt19937 rng(dev());
+  static std::uniform_real_distribution<float> dist(
       0.f, 1.f); // distribution in range [1, 6]
 
   return dist(rng);

@@ -23,6 +23,7 @@ public:
   }
 
   float norm() { return std::sqrt(x * x + y * y + z * z); }
+  float squaredNorm() { return x * x + y * y + z * z; }
   Vector3f normalized() {
     float n = std::sqrt(x * x + y * y + z * z);
     return Vector3f(x / n, y / n, z / n);
